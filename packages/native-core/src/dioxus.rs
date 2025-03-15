@@ -1,7 +1,7 @@
 //! Integration between Dioxus and the RealDom
 
 use crate::tree::TreeMut;
-use dioxus_core::{AttributeValue, ElementId, TemplateNode, WriteMutations};
+use dioxus_core::{AttributeValue, ElementId, Template, TemplateNode, WriteMutations};
 use rustc_hash::{FxHashMap, FxHashSet};
 use shipyard::Component;
 
@@ -20,7 +20,7 @@ struct ElementIdComponent(ElementId);
 
 /// The state of the Dioxus integration with the RealDom
 pub struct DioxusState {
-    templates: FxHashMap<String, Vec<NodeId>>,
+    templates: FxHashMap<Template, Vec<NodeId>>,
     stack: Vec<NodeId>,
     node_id_mapping: Vec<Option<NodeId>>,
 }
@@ -94,16 +94,16 @@ pub struct DioxusNativeCoreMutationWriter<'a, V: FromAnyValue + Send + Sync = ()
 }
 
 impl<V: FromAnyValue + Send + Sync> WriteMutations for DioxusNativeCoreMutationWriter<'_, V> {
-    fn register_template(&mut self, template: dioxus_core::prelude::Template) {
-        let mut template_root_ids = Vec::new();
-        for root in template.roots {
-            let id = create_template_node(self.rdom, root);
-            template_root_ids.push(id);
-        }
-        self.state
-            .templates
-            .insert(template.name.to_string(), template_root_ids);
-    }
+    // fn register_template(&mut self, template: dioxus_core::prelude::Template) {
+    //     let mut template_root_ids = Vec::new();
+    //     for root in template.roots {
+    //         let id = create_template_node(self.rdom, root);
+    //         template_root_ids.push(id);
+    //     }
+    //     self.state
+    //         .templates
+    //         .insert(template.name.to_string(), template_root_ids);
+    // }
 
     fn append_children(&mut self, id: ElementId, m: usize) {
         let children = self.state.stack.split_off(self.state.stack.len() - m);
@@ -138,27 +138,37 @@ impl<V: FromAnyValue + Send + Sync> WriteMutations for DioxusNativeCoreMutationW
         self.state.stack.push(node_id);
     }
 
-    fn hydrate_text_node(&mut self, path: &'static [u8], value: &str, id: ElementId) {
-        let node_id = self.state.load_child(self.rdom, path);
-        let node = self.rdom.get_mut(node_id).unwrap();
-        self.state.set_element_id(node, id);
-        let mut node = self.rdom.get_mut(node_id).unwrap();
-        let node_type_mut = node.node_type_mut();
-        if let NodeTypeMut::Text(mut text) = node_type_mut {
-            *text.text_mut() = value.to_string();
-        } else {
-            drop(node_type_mut);
-            node.set_type(NodeType::Text(TextNode {
-                text: value.to_string(),
-                listeners: FxHashSet::default(),
-            }));
-        }
-    }
+    // fn hydrate_text_node(&mut self, path: &'static [u8], value: &str, id: ElementId) {
+    //     let node_id = self.state.load_child(self.rdom, path);
+    //     let node = self.rdom.get_mut(node_id).unwrap();
+    //     self.state.set_element_id(node, id);
+    //     let mut node = self.rdom.get_mut(node_id).unwrap();
+    //     let node_type_mut = node.node_type_mut();
+    //     if let NodeTypeMut::Text(mut text) = node_type_mut {
+    //         *text.text_mut() = value.to_string();
+    //     } else {
+    //         drop(node_type_mut);
+    //         node.set_type(NodeType::Text(TextNode {
+    //             text: value.to_string(),
+    //             listeners: FxHashSet::default(),
+    //         }));
+    //     }
+    // }
 
-    fn load_template(&mut self, name: &'static str, index: usize, id: ElementId) {
-        let template_id = self.state.templates[name][index];
-        let clone_id = self.rdom.get_mut(template_id).unwrap().clone_node();
-        let clone = self.rdom.get_mut(clone_id).unwrap();
+    fn load_template(&mut self, template: Template, index: usize, id: ElementId) {
+        let template_entry = self.state.templates.entry(template).or_insert_with(|| {
+            let template_root_ids: Vec<NodeId> = template
+                .roots
+                .iter()
+                .map(|root| create_template_node(self.rdom, root))
+                .collect();
+
+            template_root_ids
+        });
+
+        let template_node_id = template_entry[index];
+        let clone = self.rdom.deep_clone_node(template_node_id);
+        let clone_id = clone.id();
         self.state.set_element_id(clone, id);
         self.state.stack.push(clone_id);
     }
@@ -307,9 +317,6 @@ fn create_template_node<V: FromAnyValue + Send + Sync>(
             }))
             .id(),
         TemplateNode::Dynamic { .. } => rdom.create_node(NodeType::Placeholder).id(),
-        TemplateNode::DynamicText { .. } => {
-            rdom.create_node(NodeType::Text(TextNode::default())).id()
-        }
     }
 }
 
