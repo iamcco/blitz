@@ -19,10 +19,10 @@ dioxus-native-core = { path = "packages/native-core", version = "0.5.0-alpha.2" 
 dioxus-native-core-macro = { path = "packages/native-core-macro", version = "0.5.0-alpha.2" }
 plasmo = { path = "packages/plasmo", version = "0.5.0-alpha.2" }
 
-dioxus = { git = "https://github.com/iamcco/dioxus", branch = "feat/generaional-box-32" }
-dioxus-core = { git = "https://github.com/iamcco/dioxus", branch = "feat/generaional-box-32" }
-dioxus-hot-reload = { git = "https://github.com/iamcco/dioxus", branch = "feat/generaional-box-32" }
-dioxus-html = { git = "https://github.com/iamcco/dioxus", branch = "feat/generaional-box-32" }
+dioxus = { git = "https://github.com/iamcco/dioxus", branch = "feat/html-mini" }
+dioxus-core = { git = "https://github.com/iamcco/dioxus", branch = "feat/html-mini" }
+dioxus-hot-reload = { git = "https://github.com/iamcco/dioxus", branch = "feat/html-mini" }
+dioxus-html = { git = "https://github.com/iamcco/dioxus", branch = "feat/html-mini" }
 
 tracing = "0.1.37"
 tracing-futures = "0.2.5"
